@@ -1,0 +1,21 @@
+# Cloudflare Worker config for the wheel-analyzer data proxy.
+#
+# Deploy:   cd worker && npx wrangler deploy
+# Tail log: npx wrangler tail
+#
+# After the first deploy, wrangler prints the Worker URL, e.g.
+#   https://wheel-analyzer-proxy.<your-subdomain>.workers.dev
+# Paste that into the app's Settings panel (the gear, top right).
+
+name = "wheel-analyzer-proxy"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Optional: lock the proxy to your GitHub Pages origin instead of "*".
+# Uncomment and set once you know your Pages URL.
+# [vars]
+# ALLOW_ORIGIN = "https://lillystonks.github.io"
+
+# The free plan covers this comfortably: 100,000 requests/day, and the edge
+# cache means a day of normal use is a few hundred at most.
+workers_dev = true

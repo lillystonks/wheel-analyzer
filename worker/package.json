@@ -1,0 +1,13 @@
+{
+  "name": "wheel-analyzer-proxy",
+  "private": true,
+  "description": "Cache-first Yahoo Finance proxy for the Wheel Analyzer front end",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

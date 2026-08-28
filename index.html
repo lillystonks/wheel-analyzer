@@ -1,0 +1,1619 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wheel Analyzer</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%238C8578' stroke-width='2'/%3E%3Cpath d='M16 3 A13 13 0 0 1 29 16' fill='none' stroke='%23C96442' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='16' r='3.5' fill='%23C96442'/%3E%3C/svg%3E">
+<meta name="description" content="Score a cash-secured put or covered call for the wheel strategy against live option-chain data.">
+<meta name="color-scheme" content="light dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --paper:#F0EEE6;
+  --card:#FAF9F5;
+  --card-2:#F6F3EB;
+  --ink:#1A1915;
+  --ink-2:#5C574C;
+  --ink-3:#8C8578;
+  --line:#E2DDD0;
+  --line-2:#D3CCBA;
+  --clay:#C96442;
+  --clay-ink:#FFFFFF;
+  --clay-soft:#F1E1D8;
+  --gain:#3B7A57;
+  --gain-fill:rgba(59,122,87,.16);
+  --loss:#9E3B2E;
+  --loss-fill:rgba(158,59,46,.14);
+  --warn:#8A6D1F;
+  --warn-fill:rgba(138,109,31,.14);
+  --shadow:0 1px 2px rgba(26,25,21,.05), 0 6px 20px -12px rgba(26,25,21,.22);
+  --r:14px;
+  --maxw:60rem;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#191814;
+    --card:#22211C;
+    --card-2:#2A2822;
+    --ink:#EDEAE1;
+    --ink-2:#ABA598;
+    --ink-3:#847E71;
+    --line:#332F28;
+    --line-2:#413C33;
+    --clay:#E08A66;
+    --clay-ink:#1A1310;
+    --clay-soft:#3A2A22;
+    --gain:#6FB48D;
+    --gain-fill:rgba(111,180,141,.17);
+    --loss:#DB7C66;
+    --loss-fill:rgba(219,124,102,.15);
+    --warn:#D8B45C;
+    --warn-fill:rgba(216,180,92,.15);
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -14px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#191814;
+  --card:#22211C;
+  --card-2:#2A2822;
+  --ink:#EDEAE1;
+  --ink-2:#ABA598;
+  --ink-3:#847E71;
+  --line:#332F28;
+  --line-2:#413C33;
+  --clay:#E08A66;
+  --clay-ink:#1A1310;
+  --clay-soft:#3A2A22;
+  --gain:#6FB48D;
+  --gain-fill:rgba(111,180,141,.17);
+  --loss:#DB7C66;
+  --loss-fill:rgba(219,124,102,.15);
+  --warn:#D8B45C;
+  --warn-fill:rgba(216,180,92,.15);
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -14px rgba(0,0,0,.7);
+}
+
+*{box-sizing:border-box;}
+[hidden]{display:none !important;}
+html{-webkit-text-size-adjust:100%;}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Figtree",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:16px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+h1,h2,h3,h4{font-family:"Newsreader",Georgia,"Times New Roman",serif;font-weight:500;text-wrap:balance;margin:0;letter-spacing:-.01em;}
+p{margin:0;}
+a{color:var(--clay);}
+button{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer;}
+input,select{font:inherit;color:inherit;}
+:focus-visible{outline:2px solid var(--clay);outline-offset:2px;border-radius:4px;}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;}
+.pos{color:var(--gain);}
+.neg{color:var(--loss);}
+.muted{color:var(--ink-3);}
+
+.shell{max-width:var(--maxw);margin:0 auto;padding:0 18px;}
+header.top{
+  position:sticky;top:0;z-index:40;
+  background:color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter:saturate(1.4) blur(12px);
+  -webkit-backdrop-filter:saturate(1.4) blur(12px);
+  border-bottom:1px solid var(--line);
+}
+.top-in{max-width:var(--maxw);margin:0 auto;padding:10px 18px;display:flex;align-items:center;gap:12px;min-height:56px;}
+.brand{display:flex;align-items:center;gap:9px;font-family:"Newsreader",serif;font-size:19px;letter-spacing:-.015em;}
+.mark{width:26px;height:26px;flex:none;}
+.spacer{flex:1;}
+.gear{
+  display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 10px;
+  font-size:13px;font-weight:600;color:var(--ink-2);border:1px solid var(--line-2);
+  border-radius:10px;background:var(--card);
+}
+.gear svg{width:16px;height:16px;}
+
+main{padding:0 0 90px;}
+.hero{padding:34px 0 8px;}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:500;
+  letter-spacing:.13em;text-transform:uppercase;color:var(--clay);
+}
+.hero h1{font-size:clamp(2rem,6vw,2.7rem);line-height:1.08;margin:12px 0 0;}
+.hero h1 em{font-style:italic;color:var(--clay);}
+.hero p{color:var(--ink-2);margin-top:12px;max-width:52ch;font-size:16px;}
+
+/* ---------- form ---------- */
+.form{
+  margin-top:22px;background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);padding:18px;box-shadow:var(--shadow);
+}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field.grow{flex:1 1 150px;}
+.field label{
+  font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);
+}
+.field input,.field select{
+  min-height:46px;padding:10px 12px;border-radius:10px;
+  border:1px solid var(--line-2);background:var(--paper);color:var(--ink);
+  font-size:15px;width:100%;
+}
+.field input.tkr{text-transform:uppercase;font-family:"IBM Plex Mono",monospace;font-weight:600;letter-spacing:.04em;}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:46px;padding:0 20px;border-radius:11px;font-weight:600;font-size:15px;
+  background:var(--clay);color:var(--clay-ink);box-shadow:var(--shadow);
+  transition:transform .14s ease, filter .14s ease;white-space:nowrap;
+}
+.btn:active{transform:scale(.98);}
+.btn[disabled]{filter:grayscale(.5) opacity(.6);cursor:default;}
+.btn.ghost{background:var(--card);border:1px solid var(--line-2);color:var(--ink-2);box-shadow:none;}
+.btn.sm{min-height:38px;padding:0 14px;font-size:13px;}
+.adv{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line-2);}
+.adv summary{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-3);cursor:pointer;list-style:none;
+}
+.adv summary::-webkit-details-marker{display:none;}
+.adv summary::before{content:"+ ";color:var(--clay);}
+.adv[open] summary::before{content:"– ";}
+.adv .row{margin-top:14px;}
+.hint{font-size:12.5px;color:var(--ink-3);margin-top:10px;line-height:1.5;}
+
+/* ---------- generic cards ---------- */
+.card{
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:18px;box-shadow:var(--shadow);
+}
+.sec{margin-top:26px;}
+.sec-head{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+.sec-num{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;color:var(--clay);letter-spacing:.1em;}
+.sec-head h2{font-size:20px;}
+.sec-head .note{font-size:12.5px;color:var(--ink-3);}
+
+.setup-card,.err-card{margin-top:20px;border-radius:var(--r);padding:18px;font-size:14.5px;line-height:1.6;}
+.setup-card{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--clay);}
+.err-card{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--loss);}
+.setup-card h3,.err-card h3{font-size:16px;margin-bottom:8px;}
+.setup-card ol{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:6px;}
+.setup-card code{font-family:"IBM Plex Mono",monospace;font-size:.86em;background:var(--card-2);border:1px solid var(--line);padding:1px 5px;border-radius:5px;}
+
+/* ---------- verdict ---------- */
+.verdict{display:flex;gap:20px;align-items:center;flex-wrap:wrap;}
+.ring{width:96px;height:96px;flex:none;}
+.ring text.big{font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:600;fill:var(--ink);}
+.ring text.sm{font-family:"IBM Plex Mono",monospace;font-size:6px;font-weight:600;fill:var(--ink-3);letter-spacing:.1em;}
+.verdict-body{flex:1 1 260px;}
+.verdict-body .tag{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--clay);
+}
+.verdict-body h2{font-size:23px;margin:4px 0 6px;font-family:"Newsreader",serif;}
+.verdict-body p{font-size:14px;color:var(--ink-2);}
+
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border-radius:11px;overflow:hidden;margin-top:16px;}
+.stat-grid > div{background:var(--card-2);padding:12px 14px;}
+.stat-grid span{display:block;font-size:10px;font-family:"IBM Plex Mono",monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);}
+.stat-grid b{font-family:"IBM Plex Mono",monospace;font-size:17px;font-weight:600;display:block;margin-top:3px;}
+
+/* ---------- pro / con ---------- */
+.pcs{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.pcs .col{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px;}
+.pcs .col h3{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;letter-spacing:.11em;
+  text-transform:uppercase;margin-bottom:10px;
+}
+.pcs .pro h3{color:var(--gain);}
+.pcs .con h3{color:var(--loss);}
+.pcs ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px;}
+.pcs li{font-size:13.5px;line-height:1.5;padding-left:18px;position:relative;color:var(--ink-2);}
+.pcs li::before{position:absolute;left:0;top:0;font-family:"IBM Plex Mono",monospace;font-weight:600;}
+.pcs .pro li::before{content:"+";color:var(--gain);}
+.pcs .con li::before{content:"\2212";color:var(--loss);}
+.pcs li b{color:var(--ink);font-weight:600;}
+
+/* ---------- tables ---------- */
+.scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:var(--r);}
+table{border-collapse:collapse;width:100%;font-size:13.5px;}
+th,td{text-align:right;padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap;}
+th:first-child,td:first-child{text-align:left;}
+thead th{
+  font-family:"IBM Plex Mono",monospace;font-size:9.5px;font-weight:600;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3);background:var(--card-2);
+  position:sticky;top:0;
+}
+tbody td{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;}
+tbody td:first-child{font-family:"Figtree",sans-serif;}
+tbody tr:last-child td{border-bottom:none;}
+tr.chosen td{background:var(--clay-soft);}
+tr.best td{box-shadow:inset 3px 0 0 var(--gain);}
+.kv{width:100%;font-size:14px;}
+.kv td{border-bottom:1px dashed var(--line-2);}
+.kv td:first-child{color:var(--ink-2);font-family:"Figtree",sans-serif;}
+.kv tr:last-child td{border-bottom:none;}
+
+/* ---------- figure ---------- */
+.fig{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px 14px 8px;box-shadow:var(--shadow);overflow:hidden;}
+.fig svg{display:block;width:100%;height:auto;}
+.figcap{font-size:12px;color:var(--ink-3);line-height:1.45;padding:10px 2px 2px;margin-top:8px;border-top:1px solid var(--line);}
+.figcap b{color:var(--ink-2);}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+.flag{
+  display:flex;gap:10px;align-items:flex-start;border-radius:var(--r);padding:13px 15px;
+  font-size:13.5px;line-height:1.5;margin-top:12px;
+}
+.flag.warn{background:var(--warn-fill);border:1px solid var(--warn);color:var(--ink);}
+.flag.ok{background:var(--gain-fill);border:1px solid var(--gain);color:var(--ink);}
+.flag .ic{font-family:"IBM Plex Mono",monospace;font-weight:700;flex:none;}
+
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+.chip{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+  background:var(--card-2);border:1px solid var(--line-2);color:var(--ink-2);
+  padding:5px 10px;border-radius:999px;
+}
+
+.spinner{width:18px;height:18px;border:2.5px solid color-mix(in srgb,var(--clay-ink) 40%,transparent);border-top-color:var(--clay-ink);border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes fade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+#result:not([hidden]){animation:fade .3s ease both;}
+
+.disclaim{
+  margin:30px 0 6px;padding:15px 16px;border-radius:var(--r);
+  background:var(--card-2);border:1px solid var(--line);
+  font-size:12.5px;line-height:1.55;color:var(--ink-3);
+}
+.disclaim b{color:var(--ink-2);font-weight:600;}
+
+/* ---------- settings dialog ---------- */
+dialog{
+  border:1px solid var(--line-2);border-radius:var(--r);padding:0;max-width:34rem;width:calc(100% - 36px);
+  background:var(--card);color:var(--ink);box-shadow:var(--shadow);
+}
+dialog::backdrop{background:rgba(20,18,15,.45);backdrop-filter:blur(2px);}
+.dlg-in{padding:20px;}
+.dlg-in h3{font-size:18px;margin-bottom:6px;}
+.dlg-in p{font-size:13.5px;color:var(--ink-2);line-height:1.55;margin-bottom:12px;}
+.dlg-in input{width:100%;min-height:46px;padding:10px 12px;border-radius:10px;border:1px solid var(--line-2);background:var(--paper);color:var(--ink);font-family:"IBM Plex Mono",monospace;font-size:13px;}
+.dlg-row{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}
+.status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ink-3);margin-right:6px;vertical-align:middle;}
+.status-dot.ok{background:var(--gain);}
+.status-dot.bad{background:var(--loss);}
+
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.001ms !important;transition-duration:.001ms !important;}}
+@media (max-width:620px){
+  .pcs{grid-template-columns:1fr;}
+  .two{grid-template-columns:1fr;}
+  .stat-grid{grid-template-columns:1fr 1fr;}
+}
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <circle cx="16" cy="16" r="13" stroke="currentColor" stroke-width="1.6" opacity=".28"/>
+        <path d="M16 3 A13 13 0 0 1 29 16" stroke="var(--clay)" stroke-width="2.6" stroke-linecap="round"/>
+        <circle cx="16" cy="16" r="3.4" fill="var(--clay)"/>
+      </svg>
+      <span>Wheel Analyzer</span>
+    </div>
+    <div class="spacer"></div>
+    <button class="gear" id="settingsBtn" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.36.14.75.22 1.15.22H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span id="proxyState"><span class="status-dot" id="proxyDot"></span>Settings</span>
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="shell">
+    <section class="hero">
+      <div class="eyebrow">Cash-secured puts &middot; covered calls &middot; live chains</div>
+      <h1>Is this a <em>good</em> wheel trade?</h1>
+      <p>Pick a stock and an expiry. The app pulls the live option chain, works the numbers the way a wheel trader would, scores the trade, and shows you the strikes and expiries that look better.</p>
+    </section>
+
+    <form class="form" id="form" autocomplete="off">
+      <div class="row">
+        <div class="field grow">
+          <label for="ticker">Ticker</label>
+          <input class="tkr" id="ticker" name="ticker" placeholder="AAPL" maxlength="12" required>
+        </div>
+        <div class="field grow">
+          <label for="expiry">Expiry</label>
+          <select id="expiry" disabled><option>load a ticker first</option></select>
+        </div>
+        <div class="field grow">
+          <label for="strike">Put strike</label>
+          <select id="strike" disabled><option>—</option></select>
+        </div>
+        <button class="btn" id="go" type="submit">Analyze</button>
+      </div>
+      <details class="adv">
+        <summary>Assumptions</summary>
+        <div class="row">
+          <div class="field grow">
+            <label for="contracts">Contracts</label>
+            <input id="contracts" class="mono" type="number" min="1" max="500" step="1" value="1">
+          </div>
+          <div class="field grow">
+            <label for="drift">Expected annual drift %</label>
+            <input id="drift" class="mono" type="number" min="-40" max="40" step="1" value="0">
+          </div>
+          <div class="field grow">
+            <label for="rate">Risk-free rate %</label>
+            <input id="rate" class="mono" type="number" min="0" max="15" step="0.1" placeholder="live">
+          </div>
+          <div class="field grow">
+            <label for="targetDelta">Target delta</label>
+            <input id="targetDelta" class="mono" type="number" min="0.05" max="0.5" step="0.01" value="0.30">
+          </div>
+        </div>
+        <p class="hint">Drift is the yearly move you assume for the share price when estimating probabilities &mdash; 0% is the neutral default and keeps the numbers close to what the option market itself implies. Leave the rate blank to use the live 13-week T-bill yield.</p>
+      </details>
+      <p class="hint" id="formHint">Data comes from Yahoo Finance through your own Cloudflare Worker and is typically delayed about 15 minutes. US equities and ETFs with listed options work best.</p>
+    </form>
+
+    <div class="setup-card" id="setup" hidden>
+      <h3>One-time setup: connect a data proxy</h3>
+      <p>GitHub Pages can't call Yahoo Finance directly (no CORS, and Yahoo rate-limits by IP). A tiny free Cloudflare Worker sits in between. You deploy it once, then paste its URL here.</p>
+      <ol>
+        <li>Install the CLI: <code>npm i -g wrangler</code> (needs Node).</li>
+        <li>From the repo: <code>cd worker &amp;&amp; wrangler deploy</code> &mdash; it opens a browser to sign in, then prints a URL ending in <code>.workers.dev</code>.</li>
+        <li>Click <b>Settings</b> (top right) and paste that URL.</li>
+      </ol>
+      <p style="margin-top:10px">Full walkthrough, including the no-terminal route, is in <code>SETUP.md</code>.</p>
+    </div>
+
+    <div class="err-card" id="error" hidden>
+      <h3 id="errTitle">Something went wrong</h3>
+      <p id="errBody"></p>
+    </div>
+
+    <div id="result" hidden></div>
+
+    <div class="disclaim">
+      <b>Educational tool, not financial advice.</b> Every figure here is an estimate built from simplified models (Black&ndash;Scholes pricing, a lognormal price distribution, a plain GBM simulation) and delayed data that can be wrong or stale. Selling puts and calls can lose far more than the premium collected. Nothing here is a recommendation to place any trade &mdash; it reports quantities and leaves the decision to you. Verify every number in your broker before acting, and speak to a licensed professional about your own situation.
+    </div>
+    <p class="hint" style="text-align:center;margin-top:14px">
+      <span id="stamp"></span>
+    </p>
+  </div>
+</main>
+
+<dialog id="settings">
+  <div class="dlg-in">
+    <h3>Data proxy</h3>
+    <p>Paste the URL of your deployed Cloudflare Worker (ends in <code style="font-family:inherit">.workers.dev</code>, or your own domain). It's stored only in this browser.</p>
+    <input id="workerUrl" placeholder="https://wheel-analyzer-proxy.you.workers.dev" spellcheck="false">
+    <p id="testResult" class="hint" style="min-height:1.2em"></p>
+    <div class="dlg-row">
+      <button class="btn ghost sm" id="testBtn" type="button">Test</button>
+      <button class="btn ghost sm" id="cancelSettings" type="button">Cancel</button>
+      <button class="btn sm" id="saveSettings" type="button">Save</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+/* ============================================================
+   1. CONFIG + HELPERS
+   ============================================================ */
+"use strict";
+
+const CONFIG = {
+  // Your deployed Cloudflare Worker. Settings-panel value overrides this.
+  workerBase: "https://wheel-analyzer-proxy.wheel-analyzer-proxy.workers.dev",
+  mcPaths: 20000,
+  defaultRate: 0.043,   // fallback if the live ^IRX lookup fails
+};
+
+const LS = {
+  get: (k, d) => { try { const v = localStorage.getItem("wa." + k); return v == null ? d : v; } catch { return d; } },
+  set: (k, v) => { try { localStorage.setItem("wa." + k, v); } catch {} },
+};
+
+const $  = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+const MIN = "−"; // real minus
+
+const money = (n, dp = 0) => {
+  if (n == null || !isFinite(n)) return "–";
+  const r = +n.toFixed(dp);                 // round first so −0.3 shows as $0, not −$0
+  const s = r < 0 ? MIN : "";
+  return s + "$" + Math.abs(r).toLocaleString("en-US", { minimumFractionDigits: dp, maximumFractionDigits: dp });
+};
+// strikes must show exactly — a $182.50 strike is not "$183"
+const strk = (k) => (k == null || !isFinite(k)) ? "–" : "$" + (Number.isInteger(k) ? k.toLocaleString("en-US") : k.toFixed(2));
+const pct = (x, dp = 1) => (x == null || !isFinite(x)) ? "–" : (x * 100).toFixed(dp) + "%";
+const pctSigned = (x, dp = 1) => {
+  if (x == null || !isFinite(x)) return "–";
+  const v = +(x * 100).toFixed(dp);
+  return (v > 0 ? "+" : v < 0 ? MIN : "") + Math.abs(v).toFixed(dp) + "%";
+};
+const num = (x, dp = 2) => (x == null || !isFinite(x)) ? "–" : x.toFixed(dp);
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+const DAY = 86400000;
+const fmtDate = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+const cls = (x) => x > 0 ? "pos" : x < 0 ? "neg" : "";
+
+class AppError extends Error {}
+
+/* ============================================================
+   2. OPTION MATH  — Black–Scholes, greeks, implied vol
+   ============================================================ */
+
+function normPDF(x) { return Math.exp(-0.5 * x * x) / 2.5066282746310002; }
+
+// Abramowitz & Stegun 7.1.26 — abs error < 1.5e-7
+function normCDF(x) {
+  const s = x < 0 ? -1 : 1;
+  const z = Math.abs(x) / Math.SQRT2;
+  const t = 1 / (1 + 0.3275911 * z);
+  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-z * z);
+  return 0.5 * (1 + s * y);
+}
+
+// type: "call" | "put". T in years. r,q,sigma annualised. Returns price + greeks
+// (theta per calendar day, vega per 1 vol point).
+function bs(type, S, K, T, r, q, sigma) {
+  if (!(T > 0) || !(sigma > 0)) {
+    const intr = type === "call" ? Math.max(S - K, 0) : Math.max(K - S, 0);
+    return { price: intr, delta: type === "call" ? (S > K ? 1 : 0) : (S < K ? -1 : 0), gamma: 0, vega: 0, theta: 0 };
+  }
+  const sq = Math.sqrt(T);
+  const d1 = (Math.log(S / K) + (r - q + sigma * sigma / 2) * T) / (sigma * sq);
+  const d2 = d1 - sigma * sq;
+  const dr = Math.exp(-r * T), dq = Math.exp(-q * T), nd1 = normPDF(d1);
+  let price, delta, theta;
+  if (type === "call") {
+    price = S * dq * normCDF(d1) - K * dr * normCDF(d2);
+    delta = dq * normCDF(d1);
+    theta = -(S * dq * nd1 * sigma) / (2 * sq) - r * K * dr * normCDF(d2) + q * S * dq * normCDF(d1);
+  } else {
+    price = K * dr * normCDF(-d2) - S * dq * normCDF(-d1);
+    delta = -dq * normCDF(-d1);
+    theta = -(S * dq * nd1 * sigma) / (2 * sq) + r * K * dr * normCDF(-d2) - q * S * dq * normCDF(-d1);
+  }
+  return {
+    price, delta,
+    gamma: dq * nd1 / (S * sigma * sq),
+    vega: S * dq * nd1 * sq / 100,
+    theta: theta / 365,
+    d1, d2,
+  };
+}
+
+// Solve implied vol from a market price by bisection. Returns null if no sane root.
+function impliedVol(type, price, S, K, T, r, q) {
+  if (!(price > 0) || !(T > 0)) return null;
+  const intr = type === "call" ? Math.max(S - K, 0) : Math.max(K - S, 0);
+  if (price < intr - 0.005 || price > S) return null;
+  let lo = 1e-4, hi = 5;
+  let flo = bs(type, S, K, T, r, q, lo).price - price;
+  let fhi = bs(type, S, K, T, r, q, hi).price - price;
+  if (flo * fhi > 0) return null;
+  for (let i = 0; i < 64 && hi - lo > 1e-6; i++) {
+    const mid = 0.5 * (lo + hi);
+    const fm = bs(type, S, K, T, r, q, mid).price - price;
+    if (flo * fm <= 0) { hi = mid; fhi = fm; } else { lo = mid; flo = fm; }
+  }
+  return 0.5 * (lo + hi);
+}
+
+/* ============================================================
+   3. STATISTICS  — realised vol, probabilities, Monte Carlo
+   ============================================================ */
+
+function logReturns(closes) {
+  const r = [];
+  for (let i = 1; i < closes.length; i++) {
+    if (closes[i] > 0 && closes[i - 1] > 0) r.push(Math.log(closes[i] / closes[i - 1]));
+  }
+  return r;
+}
+
+function realisedVol(closes, window) {
+  const r = logReturns(closes);
+  const use = window ? r.slice(-window) : r;
+  if (use.length < 5) return null;
+  const m = use.reduce((a, b) => a + b, 0) / use.length;
+  const v = use.reduce((a, b) => a + (b - m) ** 2, 0) / (use.length - 1);
+  return Math.sqrt(v) * Math.sqrt(252);
+}
+
+// Where does `iv` sit within this stock's own trailing 21-day realised vol
+// readings over the past year? A defensible stand-in for IV rank, which needs
+// historical implied vol that Yahoo does not publish.
+function ivVsRealisedPercentile(closes, iv) {
+  const r = logReturns(closes);
+  const w = 21, samples = [];
+  for (let i = w; i <= r.length; i++) {
+    const s = r.slice(i - w, i);
+    const m = s.reduce((a, b) => a + b, 0) / w;
+    const v = s.reduce((a, b) => a + (b - m) ** 2, 0) / (w - 1);
+    samples.push(Math.sqrt(v) * Math.sqrt(252));
+  }
+  if (samples.length < 20 || !(iv > 0)) return null;
+  return samples.filter((x) => x < iv).length / samples.length;
+}
+
+// P(S_T < K) under lognormal with per-year log-drift `mu`.
+function probBelow(S, K, T, sigma, mu) {
+  const m = Math.log(S) + mu * T;
+  const sd = sigma * Math.sqrt(T);
+  return normCDF((Math.log(K) - m) / sd);
+}
+
+// Closed-form E[(K - S_T)^+] with real-world drift; `g` is expected price growth/yr.
+function expectedShortfall(S, K, T, sigma, g) {
+  const sq = Math.sqrt(T);
+  const d1 = (Math.log(S / K) + (g + sigma * sigma / 2) * T) / (sigma * sq);
+  const d2 = d1 - sigma * sq;
+  const F = S * Math.exp(g * T);
+  return K * normCDF(-d2) - F * normCDF(-d1);
+}
+
+let _spare = null;
+function gauss() {
+  if (_spare !== null) { const s = _spare; _spare = null; return s; }
+  let u, v, s;
+  do { u = Math.random() * 2 - 1; v = Math.random() * 2 - 1; s = u * u + v * v; } while (s >= 1 || s === 0);
+  const k = Math.sqrt(-2 * Math.log(s) / s);
+  _spare = v * k;
+  return u * k;
+}
+
+function quantile(sorted, p) {
+  const i = clamp((sorted.length - 1) * p, 0, sorted.length - 1);
+  const lo = Math.floor(i), hi = Math.ceil(i);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+}
+
+// Single cash-secured put held to expiry.
+function simulateCSP(p) {
+  const n = p.nPaths;
+  const drift = (p.g - 0.5 * p.sigma * p.sigma) * p.T;
+  const vol = p.sigma * Math.sqrt(p.T);
+  const perContract = 100 * p.contracts;
+  const premium$ = p.premium * perContract;
+  const pnl = new Float64Array(n);
+  let assigned = 0, profit = 0;
+  for (let i = 0; i < n; i++) {
+    const ST = p.S * Math.exp(drift + vol * gauss());
+    if (ST < p.K) assigned++;
+    const v = premium$ - Math.max(p.K - ST, 0) * perContract;
+    if (v > 0) profit++;
+    pnl[i] = v;
+  }
+  pnl.sort((a, b) => a - b);
+  const mean = pnl.reduce((a, b) => a + b, 0) / n;
+  return {
+    mean, pnl,
+    p05: quantile(pnl, 0.05), p25: quantile(pnl, 0.25), p50: quantile(pnl, 0.5),
+    p75: quantile(pnl, 0.75), p95: quantile(pnl, 0.95),
+    worst: pnl[0], best: pnl[n - 1],
+    pAssigned: assigned / n, pProfit: profit / n,
+    collateral: p.K * perContract,
+  };
+}
+
+// Roughly a year of wheeling the same name at the same moneyness. Assumptions,
+// all deliberately simple: implied vol constant at the analysed level, one new
+// position each cycle at the target delta, no early assignment, no fees.
+function simulateWheelYear(p) {
+  const n = Math.min(p.nPaths, 6000);
+  const cyclesPerYear = Math.max(1, Math.round(365 / p.dte));
+  const stepT = p.dte / 365;
+  const drift = (p.g - 0.5 * p.sigma * p.sigma) * stepT;
+  const vol = p.sigma * Math.sqrt(stepT);
+  const perContract = 100 * p.contracts;
+  const results = new Float64Array(n);
+
+  // moneyness offsets that reproduce the target delta at this tenor
+  const putK = strikeForDelta("put", -p.targetDelta, 1, stepT, p.r, p.q, p.sigma);
+  const callK = strikeForDelta("call", p.targetDelta, 1, stepT, p.r, p.q, p.sigma);
+
+  for (let i = 0; i < n; i++) {
+    let S = p.S, cash = 0, shares = 0, basis = 0;
+    for (let c = 0; c < cyclesPerYear; c++) {
+      if (shares === 0) {
+        const K = S * putK;
+        const prem = bs("put", S, K, stepT, p.r, p.q, p.sigma).price;
+        cash += prem * perContract;
+        S = S * Math.exp(drift + vol * gauss());
+        if (S < K) { shares = perContract; basis = K; }
+      } else {
+        const K = Math.max(S, basis) * callK;
+        const prem = bs("call", S, K, stepT, p.r, p.q, p.sigma).price;
+        cash += prem * perContract;
+        cash += p.q * S * stepT * perContract; // dividends while holding
+        S = S * Math.exp(drift + vol * gauss());
+        if (S > K) { cash += (K - basis) * perContract; shares = 0; basis = 0; }
+      }
+    }
+    if (shares > 0) cash += (S - basis) * perContract; // mark open shares
+    results[i] = cash / (p.K * perContract); // return on the collateral we set aside
+  }
+  results.sort((a, b) => a - b);
+  return {
+    p05: quantile(results, 0.05), p25: quantile(results, 0.25), p50: quantile(results, 0.5),
+    p75: quantile(results, 0.75), p95: quantile(results, 0.95),
+    mean: results.reduce((a, b) => a + b, 0) / n,
+    pLoss: results.filter((x) => x < 0).length / n,
+  };
+}
+
+// strike / spot ratio that gives `target` delta. Delta is monotonically
+// decreasing in the strike for both calls (+1→0) and puts (0→−1), so one
+// condition covers both: if we're still above target, push the strike up.
+function strikeForDelta(type, target, S, T, r, q, sigma) {
+  let lo = 0.5, hi = 1.5;
+  for (let i = 0; i < 40; i++) {
+    const mid = 0.5 * (lo + hi);
+    const d = bs(type, S, S * mid, T, r, q, sigma).delta;
+    if (d > target) lo = mid; else hi = mid;
+  }
+  return 0.5 * (lo + hi);
+}
+
+/* ============================================================
+   4. WHEEL ANALYSIS
+   ============================================================ */
+
+function analyseCSP(ctx, K) {
+  const { S, T, dte, r, q } = ctx;
+  const put = ctx.puts.find((p) => p.strike === K);
+  if (!put) throw new AppError("That strike is not in the chain.");
+
+  const mid = put.bid > 0 && put.ask > 0 ? (put.bid + put.ask) / 2 : (put.last || put.bid || 0);
+  const credit = put.bid > 0 ? put.bid : mid;                 // what you'd realistically collect
+  let iv = impliedVol("put", mid, S, K, T, r, q);
+  if (!(iv > 0.02 && iv < 4)) iv = put.iv > 0.02 && put.iv < 4 ? put.iv : ctx.hv30 || 0.3;
+  const g = r - q + ctx.driftAdj;
+
+  const greeks = bs("put", S, K, T, r, q, iv);
+  const perContract = 100 * ctx.contracts;
+  const collateral = K * perContract;
+  const premium$ = credit * perContract;
+  const breakeven = K - credit;
+  const staticReturn = premium$ / collateral;
+  const annual = staticReturn * (365 / Math.max(dte, 0.5));
+  const cushion = (S - breakeven) / S;
+  const pAssign = probBelow(S, K, T, iv, g - 0.5 * iv * iv);
+  const pKeep = 1 - pAssign;
+  const evShortfall = expectedShortfall(S, K, T, iv, g) * perContract;
+  const evPnl = premium$ - evShortfall;
+
+  const spreadPct = mid > 0 ? (put.ask - put.bid) / mid : 1;
+  const discountIfAssigned = (S - breakeven) / S;
+
+  return {
+    kind: "csp", K, put, mid, credit, iv, greeks, g,
+    perContract, collateral, premium$, breakeven, staticReturn, annual, cushion,
+    pAssign, pKeep, evPnl, spreadPct, discountIfAssigned,
+    maxProfit: premium$, maxLoss: breakeven * perContract,
+  };
+}
+
+function scanPutStrikes(ctx) {
+  const { S, T, dte, r, q } = ctx;
+  const g = r - q + ctx.driftAdj;
+  const rows = [];
+  for (const p of ctx.puts) {
+    // the wheel sells out-of-the-money puts; in-the-money strikes have "returns"
+    // inflated by intrinsic value, so they don't belong in the comparison set
+    if (!(p.strike > 0) || p.strike > S * 1.005 || p.strike < S * 0.55) continue;
+    const mid = p.bid > 0 && p.ask > 0 ? (p.bid + p.ask) / 2 : (p.last || 0);
+    const credit = p.bid > 0 ? p.bid : mid;
+    if (!(credit > 0.01)) continue;
+    let iv = impliedVol("put", mid, S, p.strike, T, r, q);
+    if (!(iv > 0.02 && iv < 4)) iv = p.iv > 0.02 && p.iv < 4 ? p.iv : (ctx.hv30 || 0.3);
+    const gk = bs("put", S, p.strike, T, r, q, iv);
+    const collateral = p.strike * 100;
+    const staticR = (credit * 100) / collateral;
+    const annual = staticR * (365 / Math.max(dte, 0.5));
+    const breakeven = p.strike - credit;
+    const cushion = (S - breakeven) / S;
+    const pKeep = 1 - probBelow(S, p.strike, T, iv, g - 0.5 * iv * iv);
+    const spreadPct = mid > 0 ? (p.ask - p.bid) / mid : 1;
+    const row = {
+      strike: p.strike, credit, mid, iv, delta: gk.delta, annual, staticR,
+      breakeven, cushion, pKeep, oi: p.oi || 0, vol: p.volume || 0, spreadPct,
+      itm: p.strike >= S,
+    };
+    row.score = scoreTrade(row, ctx);
+    rows.push(row);
+  }
+  rows.sort((a, b) => b.score - a.score);
+  return rows;
+}
+
+// 0–100. Every input is visible in the pro/con list, so this is a summary,
+// not a black box.
+function scoreTrade(t, ctx) {
+  const bell = (x, peak, wl, wr) => Math.exp(-0.5 * ((x - peak) / (x < peak ? wl : wr)) ** 2);
+  const ad = Math.abs(t.delta);
+
+  const sAnn = 100 * bell(clamp(t.annual, 0, 1.2), 0.22, 0.11, 0.15);          // want ~15–35%/yr; punish "too good to be true"
+  const sDelta = ad >= 0.5 ? 15 : 100 * bell(ad, 0.28, 0.12, 0.10);           // wheel sweet spot
+  const ivHv = ctx.hv30 ? t.iv / ctx.hv30 : 1;
+  const sIv = 100 * bell(clamp(ivHv, 0.5, 2.2), 1.25, 0.35, 0.55);            // paid for vol, but not a warning
+  const sLiq = 100 * clamp(
+    0.6 * (1 - clamp(t.spreadPct / 0.15, 0, 1)) + 0.4 * clamp(Math.log10((t.oi || 1) + 1) / 3, 0, 1), 0, 1);
+  const sCush = 100 * clamp(t.cushion / 0.10, 0, 1);
+  const sDte = 100 * bell(clamp(ctx.dte, 0, 120), 32, 16, 40);
+
+  let score = 0.28 * sAnn + 0.18 * sDelta + 0.16 * sIv + 0.16 * sLiq + 0.14 * sCush + 0.08 * sDte;
+  if (ctx.earningsBeforeExpiry) score *= 0.82;
+  return clamp(Math.round(score), 0, 100);
+}
+
+function verdictText(score, a, ctx) {
+  if (Math.abs(a.greeks.delta) >= 0.5) return ["Stock-acquisition trade", "This put is in the money. You are very likely to be assigned — treat it as buying the shares at a discount, not as premium capture."];
+  if (score >= 80) return ["Textbook wheel setup", "Strong premium for the risk, a strike with real cushion, and a liquid contract."];
+  if (score >= 66) return ["Solid premium-capture trade", "The core numbers line up. Check the concerns before you place it."];
+  if (score >= 50) return ["Workable, with caveats", "Some of the wheel boxes are ticked and some are not. The alternatives below may be cleaner."];
+  if (score >= 35) return ["Marginal fit", "More than one part of this trade is working against you. Look hard at the better options."];
+  return ["Poor fit for the wheel", "The premium does not pay for the risk here. Consider a different strike, expiry, or name."];
+}
+
+function buildNarrative(a, ctx) {
+  const pro = [], con = [];
+  const ann = a.annual, ad = Math.abs(a.greeks.delta);
+
+  if (ann >= 0.12 && ann <= 0.45)
+    pro.push(`Collecting <b>${money(a.premium$)}</b> on ${money(a.collateral)} of collateral — <b>${pct(ann,1)}</b> annualised over ${ctx.dte} days.`);
+  if (ad >= 0.15 && ad < 0.4)
+    pro.push(`Delta ${num(ad,2)} is in the wheel's usual band — about <b>${pct(a.pKeep,0)}</b> chance the put expires worthless and you keep the whole premium.`);
+  if (ctx.hv30 && a.iv / ctx.hv30 >= 1.08)
+    pro.push(`Implied vol ${pct(a.iv,0)} is running above the ${pct(ctx.hv30,0)} the stock has actually realised — you're being paid a volatility premium.`);
+  if (a.cushion >= 0.05)
+    pro.push(`Breakeven ${money(a.breakeven,2)} is <b>${pct(a.cushion,1)}</b> below the current price — the stock can drift down that far and this trade still wins.`);
+  if (a.spreadPct <= 0.06 && (a.put.oi || 0) >= 200)
+    pro.push(`Tight ${pct(a.spreadPct,1)} bid/ask and ${(a.put.oi||0).toLocaleString()} open interest — easy to fill, roll, or close.`);
+  if (ctx.low52 && a.breakeven <= ctx.low52 * 1.02)
+    pro.push(`If assigned, your ${money(a.breakeven,2)} basis is near the 52-week low of ${money(ctx.low52,2)} — a level the market has already tested.`);
+  if (a.evPnl > 0)
+    pro.push(`Expected outcome is <b>positive</b> at ${money(a.evPnl)} on the assumptions set above.`);
+
+  if (ctx.earningsBeforeExpiry)
+    con.push(`<b>Earnings ${ctx.earnings.when ? "on " + fmtDate(ctx.earnings.when) : "expected"}</b> before this expiry — expect a price gap and a drop in implied vol afterwards.`);
+  if (ann < 0.10)
+    con.push(`${pct(ann,0)} annualised is thin for locking up ${money(a.collateral)} and taking assignment risk — a T-bill pays much of that with none of the downside.`);
+  if (ann > 0.55)
+    con.push(`${pct(ann,0)} annualised is unusually rich — the market is pricing in real risk here (event, news, or a falling knife). Find out why before selling it.`);
+  if (a.spreadPct > 0.10)
+    con.push(`Wide ${pct(a.spreadPct,1)} bid/ask — you give up real money on entry and exit, and rolling gets expensive.`);
+  if ((a.put.oi || 0) < 100)
+    con.push(`Only ${(a.put.oi||0).toLocaleString()} open interest — thin. Getting a good fill or rolling later may be hard.`);
+  if (ad >= 0.4 && ad < 0.5)
+    con.push(`Delta ${num(ad,2)} is high — roughly ${pct(a.pAssign,0)} chance of assignment. Fine if you want the shares, costly if you don't.`);
+  if (ctx.dte < 10)
+    con.push(`${ctx.dte} days to expiry — little time premium left and gamma risk rises fast into the last week.`);
+  if (ctx.dte > 60)
+    con.push(`${ctx.dte} days ties up your collateral a long time for premium that decays slowly at first.`);
+  if (a.cushion < 0.03 && ad < 0.5)
+    con.push(`Only ${pct(a.cushion,1)} of downside cushion — a modest dip puts this underwater.`);
+  if (ctx.low52 && a.breakeven > ctx.low52 * 1.15)
+    con.push(`Basis ${money(a.breakeven,2)} still sits ${pct((a.breakeven-ctx.low52)/ctx.low52,0)} above the 52-week low — room to fall before it finds a floor.`);
+
+  if (!pro.length) pro.push("Nothing about this trade stands out as a clear advantage.");
+  if (!con.length) con.push("No significant red flags on the numbers checked.");
+  return { pro, con };
+}
+
+function suggestions(a, scan, ctx) {
+  const out = [];
+  const chosen = scan.find((r) => r.strike === a.K);
+  const top = scan[0];
+  if (top && chosen && top.strike !== a.K && top.score >= chosen.score + 4) {
+    const bits = [];
+    if (top.annual - chosen.annual > 0.02) bits.push(`${pct(top.annual,0)} annualised vs ${pct(chosen.annual,0)}`);
+    if (Math.abs(Math.abs(top.delta) - Math.abs(chosen.delta)) > 0.03)
+      bits.push(`delta ${num(Math.abs(top.delta),2)} vs ${num(Math.abs(chosen.delta),2)}`);
+    if (top.cushion - chosen.cushion > 0.01) bits.push(`${pct(top.cushion,1)} cushion vs ${pct(chosen.cushion,1)}`);
+    out.push(`The <b>${strk(top.strike)} put</b> scores higher (${top.score} vs ${chosen.score})${bits.length ? " — " + bits.join(", ") : ""}.`);
+  }
+  const sweet = scan.filter((r) => Math.abs(r.delta) >= 0.22 && Math.abs(r.delta) <= 0.34 && r.spreadPct < 0.12)
+    .sort((x, y) => y.annual - x.annual)[0];
+  if (sweet && sweet.strike !== a.K && sweet.strike !== (top && top.strike))
+    out.push(`For a classic ~0.30-delta sale, the <b>${strk(sweet.strike)} put</b> pays the most at ${pct(sweet.annual,0)} annualised.`);
+  if (chosen && chosen.itm)
+    out.push(`Your ${strk(a.K)} strike is in the money — if the goal is premium, step down to an out-of-the-money strike.`);
+  if (!out.length) out.push("Your strike is at or near the best on the board for this expiry.");
+  return out;
+}
+
+function analyseCoveredCall(ctx, basis) {
+  const { S, T, dte, r, q } = ctx;
+  const g = r - q + ctx.driftAdj;
+  const rows = [];
+  for (const c of ctx.calls) {
+    // a covered call is sold above both the current price and your cost basis
+    if (!(c.strike >= Math.max(S, basis) * 1.003) || c.strike > S * 1.5) continue;
+    const mid = c.bid > 0 && c.ask > 0 ? (c.bid + c.ask) / 2 : (c.last || 0);
+    const credit = c.bid > 0 ? c.bid : mid;
+    if (!(credit > 0.01)) continue;
+    let iv = impliedVol("call", mid, S, c.strike, T, r, q);
+    if (!(iv > 0.02 && iv < 4)) iv = c.iv > 0.02 && c.iv < 4 ? c.iv : (ctx.hv30 || 0.3);
+    const gk = bs("call", S, c.strike, T, r, q, iv);
+    const yieldOnBasis = (credit * 100) / (basis * 100);
+    const annual = yieldOnBasis * (365 / Math.max(dte, 0.5));
+    const ifCalled = (c.strike - basis + credit) * 100 * ctx.contracts;
+    const pCalled = probBelow(S, c.strike, T, iv, g - 0.5 * iv * iv);
+    rows.push({
+      strike: c.strike, credit, iv, delta: gk.delta, annual, yieldOnBasis,
+      ifCalledReturn: (c.strike - basis + credit) / basis, ifCalled,
+      pCalled: 1 - pCalled, oi: c.oi || 0,
+    });
+  }
+  rows.sort((x, y) => y.annual - x.annual);
+  return rows;
+}
+
+/* ============================================================
+   5. DATA LAYER  — talk to the Worker, normalise Yahoo's shapes
+   ============================================================ */
+
+const API = {
+  base() { return (LS.get("worker", "") || CONFIG.workerBase || "").replace(/\/+$/, ""); },
+  async get(path) {
+    const b = API.base();
+    if (!b) throw new AppError("NO_PROXY");
+    let res, text;
+    try {
+      res = await fetch(b + path, { headers: { Accept: "application/json" } });
+      text = await res.text();
+    } catch (e) {
+      throw new AppError("Couldn't reach the data proxy. Check the URL in Settings and that the Worker is deployed.");
+    }
+    let j;
+    try { j = JSON.parse(text); } catch { throw new AppError("The proxy returned something that isn't JSON. Is the URL right?"); }
+    if (!res.ok) {
+      if (res.status === 429) throw new AppError("Yahoo is rate-limiting right now. Wait a minute and try again — the Worker caches, so it clears quickly.");
+      throw new AppError(j.error ? `Data error: ${j.error}` : `Request failed (${res.status}).`);
+    }
+    return j;
+  },
+};
+
+const F = (v) => { const n = Number(v); return isFinite(n) ? n : null; };
+
+async function loadExpiries(sym) {
+  const j = await API.get(`/expiries/${encodeURIComponent(sym)}`);
+  const r = j?.optionChain?.result?.[0];
+  if (!r) throw new AppError(`No options found for "${sym}". Check the ticker — it needs listed US options.`);
+  const q = r.quote || {};
+  const now = Date.now();
+  const exps = (r.expirationDates || []).map((e) => {
+    const d = new Date(e * 1000);
+    return { epoch: e, date: d, dte: Math.round((d - now) / DAY), label: fmtDate(d) };
+  }).filter((e) => e.dte >= 0);
+  return {
+    symbol: (q.symbol || sym).toUpperCase(),
+    name: q.shortName || q.longName || sym.toUpperCase(),
+    spot: F(q.regularMarketPrice) ?? F(r.quote?.regularMarketPreviousClose),
+    currency: q.currency || "USD",
+    expiries: exps,
+  };
+}
+
+async function loadChain(sym, epoch) {
+  const j = await API.get(`/chain/${encodeURIComponent(sym)}?date=${epoch}`);
+  const r = j?.optionChain?.result?.[0];
+  const o = r?.options?.[0];
+  if (!o) throw new AppError("The chain for that expiry came back empty. Try another expiry.");
+  const norm = (c) => ({
+    strike: F(c.strike),
+    bid: F(c.bid) ?? 0, ask: F(c.ask) ?? 0, last: F(c.lastPrice) ?? 0,
+    iv: F(c.impliedVolatility) ?? 0, oi: F(c.openInterest) ?? 0, volume: F(c.volume) ?? 0,
+    itm: !!c.inTheMoney,
+  });
+  return {
+    spot: F(r.quote?.regularMarketPrice),
+    expiry: new Date((o.expirationDate || epoch) * 1000),
+    calls: (o.calls || []).map(norm).filter((c) => c.strike),
+    puts: (o.puts || []).map(norm).filter((c) => c.strike),
+  };
+}
+
+async function loadHistory(sym) {
+  try {
+    const j = await API.get(`/history/${encodeURIComponent(sym)}?range=1y`);
+    const r = j?.chart?.result?.[0];
+    const closes = (r?.indicators?.quote?.[0]?.close || []).filter((x) => x != null && x > 0);
+    return {
+      closes,
+      dates: (r?.timestamp || []).map((t) => new Date(t * 1000)),
+      low52: closes.length ? Math.min(...closes) : null,
+      high52: closes.length ? Math.max(...closes) : null,
+    };
+  } catch { return { closes: [], dates: [], low52: null, high52: null }; }
+}
+
+async function loadSummary(sym) {
+  try {
+    const j = await API.get(`/summary/${encodeURIComponent(sym)}`);
+    const r = j?.quoteSummary?.result?.[0] || {};
+    const cal = r.calendarEvents?.earnings || {};
+    const dates = (cal.earningsDate || []).map((d) => new Date((d.raw ?? d) * 1000)).filter((d) => !isNaN(d));
+    const sd = r.summaryDetail || {};
+    return {
+      earnings: {
+        when: dates[0] || null,
+        windowEnd: dates[1] || null,
+        source: dates.length >= 2 ? "window" : dates.length === 1 ? "scheduled" : "unknown",
+      },
+      divYield: F(sd.dividendYield?.raw ?? sd.trailingAnnualDividendYield?.raw) ?? 0,
+      beta: F(sd.beta?.raw),
+      marketCap: F(r.price?.marketCap?.raw),
+      sector: r.assetProfile?.sector || null,
+    };
+  } catch {
+    return { earnings: { when: null, source: "unknown" }, divYield: 0, beta: null, marketCap: null, sector: null };
+  }
+}
+
+async function loadRate() {
+  try {
+    const j = await API.get("/rate");
+    const closes = (j?.chart?.result?.[0]?.indicators?.quote?.[0]?.close || []).filter((x) => x != null);
+    const last = closes[closes.length - 1];
+    if (last > 0 && last < 25) return last / 100;
+  } catch {}
+  return CONFIG.defaultRate;
+}
+</script>
+
+<script>
+/* ============================================================
+   6. CHARTS  — SVG strings, all colour from theme tokens
+   ============================================================ */
+"use strict";
+
+const AX = { m: "IBM Plex Mono, monospace", s: "Figtree, sans-serif" };
+const txt = (x, y, t, o = {}) =>
+  `<text x="${x}" y="${y}" text-anchor="${o.a || "start"}" font-family="${o.f || AX.m}" font-size="${o.z || 9.5}" font-weight="${o.w || 400}" fill="${o.c || "var(--ink-3)"}"${o.ls ? ` letter-spacing="${o.ls}"` : ""}>${esc(t)}</text>`;
+
+function frame(w, h, pL, pR, pT, pB) {
+  return { w, h, x0: pL, x1: w - pR, y0: pT, y1: h - pB };
+}
+
+function payoffChart(a, ctx) {
+  const W = 668, H = 264, f = frame(W, H, 30, 18, 20, 50);
+  const S = ctx.S, lo = S * 0.62, hi = S * 1.14;
+  const X = (p) => f.x0 + (p - lo) / (hi - lo) * (f.x1 - f.x0);
+  const pl = (p) => a.premium$ - Math.max(a.K - p, 0) * a.perContract;
+  const vlo = pl(lo);
+  const yLo = vlo * 1.08, yHi = a.premium$ + Math.max(a.premium$ * 0.9, Math.abs(vlo) * 0.06);
+  const Y = (v) => f.y1 - (v - yLo) / (yHi - yLo) * (f.y1 - f.y0);
+  const zy = Y(0);
+  const pts = [];
+  for (let i = 0; i <= 120; i++) { const p = lo + (hi - lo) * i / 120; pts.push(X(p).toFixed(1) + "," + Y(pl(p)).toFixed(1)); }
+  const line = "M" + pts.join(" L");
+  const area = line + ` L${X(hi).toFixed(1)},${zy.toFixed(1)} L${X(lo).toFixed(1)},${zy.toFixed(1)} Z`;
+  const id = "pf" + Math.random().toString(36).slice(2, 7);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Profit and loss at expiry versus share price">
+    <defs><clipPath id="${id}u"><rect x="0" y="0" width="${W}" height="${zy.toFixed(1)}"/></clipPath>
+    <clipPath id="${id}d"><rect x="0" y="${zy.toFixed(1)}" width="${W}" height="${(H - zy).toFixed(1)}"/></clipPath></defs>`;
+  s += `<path d="${area}" fill="var(--gain-fill)" clip-path="url(#${id}u)"/>`;
+  s += `<path d="${area}" fill="var(--loss-fill)" clip-path="url(#${id}d)"/>`;
+  s += `<line x1="${f.x0}" y1="${zy.toFixed(1)}" x2="${f.x1}" y2="${zy.toFixed(1)}" stroke="var(--line-2)"/>`;
+  s += txt(f.x0 + 2, zy - 4, "$0", { a: "start", c: "var(--ink-3)", z: 8.5 });
+  // strike line + label on top
+  s += `<line x1="${X(a.K).toFixed(1)}" y1="${f.y0 - 2}" x2="${X(a.K).toFixed(1)}" y2="${f.y1}" stroke="var(--clay)" stroke-width="1" stroke-dasharray="3 3"/>`;
+  s += txt(X(a.K), f.y0 - 6, "strike " + strk(a.K), { a: X(a.K) > f.x1 - 60 ? "end" : "middle", c: "var(--clay)", w: 600, z: 9 });
+  // spot line + label on bottom
+  s += `<line x1="${X(S).toFixed(1)}" y1="${f.y0}" x2="${X(S).toFixed(1)}" y2="${f.y1 + 4}" stroke="var(--ink-3)" stroke-width="1"/>`;
+  s += txt(X(S), f.y1 + 16, "spot " + money(S, 2), { a: "middle", c: "var(--ink-2)", w: 600, z: 9 });
+  // breakeven dot + label, dropped a row if it would sit on top of the spot label
+  const beRow = Math.abs(X(a.breakeven) - X(S)) < 90 ? f.y1 + 28 : f.y1 + 16;
+  s += `<circle cx="${X(a.breakeven).toFixed(1)}" cy="${zy.toFixed(1)}" r="3.5" fill="var(--card)" stroke="var(--ink)" stroke-width="2"/>`;
+  s += txt(X(a.breakeven), beRow, "breakeven " + money(a.breakeven, 2), { a: "middle", c: "var(--ink-3)", z: 9 });
+  s += `<path d="${line}" fill="none" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round"/>`;
+  s += txt(f.x1, Y(a.premium$) - 5, "keep " + money(a.premium$, 0), { a: "end", c: "var(--gain)", w: 600 });
+  s += txt(f.x0, f.y1 + 16, money(lo, 0), { a: "start", c: "var(--ink-3)" });
+  s += txt(f.x1, f.y1 + 16, money(hi, 0), { a: "end", c: "var(--ink-3)" });
+  s += txt((f.x0 + f.x1) / 2, H - 6, "SHARE PRICE AT EXPIRY  ·  below the strike you hold the shares; loss runs to $0", { a: "middle", z: 8, ls: ".05em" });
+  return s + "</svg>";
+}
+
+function distributionChart(a, ctx) {
+  const W = 668, H = 264, f = frame(W, H, 20, 18, 22, 46);
+  const S = ctx.S, iv = a.iv, T = ctx.T, g = a.g;
+  const lo = S * 0.55, hi = S * 1.6;
+  const m = Math.log(S) + (g - iv * iv / 2) * T, sd = iv * Math.sqrt(T);
+  const pdf = (x) => x <= 0 ? 0 : Math.exp(-((Math.log(x) - m) ** 2) / (2 * sd * sd)) / (x * sd * 2.5066282746);
+  const X = (x) => f.x0 + (x - lo) / (hi - lo) * (f.x1 - f.x0);
+  let pk = 0; for (let i = 0; i <= 200; i++) pk = Math.max(pk, pdf(lo + (hi - lo) * i / 200));
+  const Y = (d) => f.y1 - d / pk * (f.y1 - f.y0);
+  const band = (x0, x1, fill) => {
+    const p = [];
+    for (let i = 0; i <= 120; i++) { const x = x0 + (x1 - x0) * i / 120; p.push(X(x).toFixed(1) + "," + Y(pdf(x)).toFixed(1)); }
+    return `<path d="M${X(x0).toFixed(1)},${f.y1} L${p.join(" L")} L${X(x1).toFixed(1)},${f.y1} Z" fill="${fill}"/>`;
+  };
+  const pLoss = probBelow(S, a.breakeven, T, iv, g - 0.5 * iv * iv);
+  const pMid = Math.max(0, a.pAssign - pLoss);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Probability distribution of the share price at expiry">`;
+  s += band(lo, a.breakeven, "var(--loss-fill)");
+  s += band(a.breakeven, a.K, "var(--warn-fill)");
+  s += band(a.K, hi, "var(--gain-fill)");
+  const outline = [];
+  for (let i = 0; i <= 200; i++) { const x = lo + (hi - lo) * i / 200; outline.push(X(x).toFixed(1) + "," + Y(pdf(x)).toFixed(1)); }
+  s += `<path d="M${outline.join(" L")}" fill="none" stroke="var(--ink)" stroke-width="2"/>`;
+  s += `<line x1="${f.x0}" y1="${f.y1}" x2="${f.x1}" y2="${f.y1}" stroke="var(--line-2)"/>`;
+  // strike on top, spot on bottom — never collide
+  s += `<line x1="${X(a.K).toFixed(1)}" y1="${f.y0}" x2="${X(a.K).toFixed(1)}" y2="${f.y1}" stroke="var(--clay)" stroke-width="1" stroke-dasharray="3 3"/>`;
+  s += txt(X(a.K), f.y0 - 6, "strike " + strk(a.K), { a: "middle", c: "var(--clay)", w: 600, z: 9 });
+  s += `<line x1="${X(S).toFixed(1)}" y1="${f.y0}" x2="${X(S).toFixed(1)}" y2="${f.y1 + 4}" stroke="var(--ink-3)" stroke-width="1"/>`;
+  s += txt(X(S), f.y1 + 16, "spot " + money(S, 2), { a: "middle", c: "var(--ink-2)", w: 600, z: 9 });
+  // region probabilities, sat just inside the plot
+  s += txt(X(Math.max(lo * 1.02, a.breakeven * 0.86)), f.y1 - 7, pct(pLoss, 0) + " loss", { a: "start", c: "var(--loss)", w: 600, z: 9 });
+  if (pMid > 0.03) s += txt((X(a.breakeven) + X(a.K)) / 2, f.y1 - 7, pct(pMid, 0), { a: "middle", c: "var(--warn)", w: 600, z: 8.5 });
+  s += txt(X(Math.min(hi * 0.98, a.K * 1.2)), f.y1 - 7, pct(a.pKeep, 0) + " keep premium", { a: "start", c: "var(--gain)", w: 600, z: 9 });
+  s += txt((f.x0 + f.x1) / 2, H - 6, "where implied volatility says the stock lands  ·  red loss · amber assigned but ahead · green full premium", { a: "middle", z: 8, ls: ".03em" });
+  return s + "</svg>";
+}
+
+function mcHistogram(mc, evPnl) {
+  const W = 668, H = 244, f = frame(W, H, 24, 18, 24, 40);
+  const arr = mc.pnl, n = arr.length;
+  const lo = quantile(arr, 0.02), hi = quantile(arr, 0.995);
+  const bins = 44, counts = new Array(bins).fill(0);
+  for (let i = 0; i < n; i++) counts[clamp(Math.floor((arr[i] - lo) / (hi - lo) * bins), 0, bins - 1)]++;
+  const sorted = [...counts].sort((x, y) => y - x);
+  // cap the axis just above the tallest ordinary bar, so the premium spike
+  // doesn't flatten the assignment tail into nothing
+  const cap = Math.max(sorted[3] * 1.3, sorted[0] * 0.12, 1);
+  const X = (v) => f.x0 + (v - lo) / (hi - lo) * (f.x1 - f.x0);
+  const Y = (c) => f.y1 - Math.min(c, cap) / cap * (f.y1 - f.y0);
+  const bw = (f.x1 - f.x0) / bins;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Distribution of simulated profit and loss at expiry">`;
+  for (let b = 0; b < bins; b++) {
+    if (!counts[b]) continue;
+    const v = lo + (b + 0.5) / bins * (hi - lo);
+    const col = v >= 0 ? "var(--gain)" : "var(--loss)";
+    s += `<rect x="${(f.x0 + b * bw).toFixed(1)}" y="${Y(counts[b]).toFixed(1)}" width="${(bw - 0.7).toFixed(1)}" height="${(f.y1 - Y(counts[b])).toFixed(1)}" fill="${col}" opacity=".9"/>`;
+    if (counts[b] > cap * 1.05)
+      s += txt(f.x0 + (b + 0.5) * bw, Y(counts[b]) - 4, pct(counts[b] / n, 0), { a: "middle", c: col, w: 600, z: 9 });
+  }
+  const zx = X(0);
+  if (zx >= f.x0 && zx <= f.x1) s += `<line x1="${zx.toFixed(1)}" y1="${f.y0}" x2="${zx.toFixed(1)}" y2="${f.y1}" stroke="var(--ink-2)"/>`;
+  const vmark = (v, c, lbl, anchor) => (X(v) > f.x0 + 4 && X(v) < f.x1 - 4)
+    ? `<line x1="${X(v).toFixed(1)}" y1="${f.y0}" x2="${X(v).toFixed(1)}" y2="${f.y1}" stroke="${c}" stroke-width="1" stroke-dasharray="2 3"/>` + txt(clamp(X(v), f.x0 + 18, f.x1 - 18), f.y0 - 5, lbl, { a: anchor || "middle", c, z: 8.5, w: 600 })
+    : "";
+  s += vmark(mc.p05, "var(--loss)", "P5 " + money(mc.p05, 0));
+  // median / mean only when they aren't sitting on the premium spike at the right edge
+  if (mc.p50 < mc.best * 0.985) s += vmark(mc.p50, "var(--ink-2)", "median " + money(mc.p50, 0));
+  s += vmark(evPnl != null ? evPnl : mc.mean, "var(--clay)", "mean " + money(evPnl != null ? evPnl : mc.mean, 0));
+  [lo, (lo + hi) / 2, hi].forEach((v, i) => s += txt(X(v), f.y1 + 14, money(v, 0), { a: i === 0 ? "start" : i === 2 ? "end" : "middle" }));
+  s += txt((f.x0 + f.x1) / 2, H - 5, `PROFIT / LOSS AT EXPIRY  ·  ${n.toLocaleString()} paths  ·  spike = kept the full premium (share labelled), left tail = assignment`, { a: "middle", z: 8, ls: ".02em" });
+  return s + "</svg>";
+}
+
+function scanChart(scan, chosenK, ctx) {
+  const W = 668, H = 260, f = frame(W, H, 46, 16, 18, 36);
+  // cap the axis around the meaningful strikes so a couple of near-ATM outliers
+  // don't squash everything else flat
+  const anns = scan.map((r) => r.annual).sort((a, b) => a - b);
+  const p85 = anns[Math.min(anns.length - 1, Math.ceil(anns.length * 0.85))] || 0.1;
+  const maxAnn = Math.max(0.12, Math.min(Math.max(...anns) * 1.05, p85 * 1.6));
+  const X = (d) => f.x0 + clamp(Math.abs(d), 0, 0.55) / 0.55 * (f.x1 - f.x0);
+  const Y = (an) => f.y1 - clamp(an, 0, maxAnn) / maxAnn * (f.y1 - f.y0);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Annualised return versus delta for every put strike">`;
+  // sweet-spot band 0.15–0.35 delta
+  s += `<rect x="${X(0.15).toFixed(1)}" y="${f.y0}" width="${(X(0.35) - X(0.15)).toFixed(1)}" height="${f.y1 - f.y0}" fill="var(--clay-soft)" opacity=".5"/>`;
+  s += txt((X(0.15) + X(0.35)) / 2, f.y0 + 10, "wheel sweet spot", { a: "middle", c: "var(--clay)", z: 8.5, w: 600 });
+  for (const r of scan) {
+    const rad = 3 + clamp(Math.log10((r.oi || 1) + 1), 0, 3.2) * 1.6;
+    const best = r === scan[0];
+    s += `<circle cx="${X(r.delta).toFixed(1)}" cy="${Y(r.annual).toFixed(1)}" r="${rad.toFixed(1)}" fill="${best ? "var(--gain)" : "var(--clay)"}" opacity="${r.strike === chosenK ? 1 : 0.5}" ${r.strike === chosenK ? 'stroke="var(--ink)" stroke-width="2"' : ""}/>`;
+  }
+  s += `<line x1="${f.x0}" y1="${f.y1}" x2="${f.x1}" y2="${f.y1}" stroke="var(--line-2)"/>`;
+  s += `<line x1="${f.x0}" y1="${f.y0}" x2="${f.x0}" y2="${f.y1}" stroke="var(--line-2)"/>`;
+  [0, 0.1, 0.2, 0.3, 0.4, 0.5].forEach((d) => s += txt(X(d), f.y1 + 13, d.toFixed(2), { a: "middle" }));
+  for (let i = 0; i <= 4; i++) { const an = maxAnn * i / 4; s += txt(f.x0 - 6, Y(an) + 3, pct(an, 0), { a: "end" }); }
+  s += txt((f.x0 + f.x1) / 2, H - 3, "PUT DELTA  →  (circle size = open interest, ringed = your strike, green = top score)", { a: "middle", z: 8, ls: ".04em" });
+  return s + "</svg>";
+}
+
+function priceChart(hist, a, ctx) {
+  const W = 668, H = 230, f = frame(W, H, 46, 16, 16, 24);
+  const c = hist.closes;
+  if (c.length < 10) return `<svg viewBox="0 0 ${W} ${H}"><text x="20" y="40" font-family="${AX.m}" font-size="11" fill="var(--ink-3)">price history unavailable</text></svg>`;
+  const lo = Math.min(a.breakeven, ...c) * 0.98, hi = Math.max(...c) * 1.02;
+  const X = (i) => f.x0 + i / (c.length - 1) * (f.x1 - f.x0);
+  const Y = (p) => f.y1 - (p - lo) / (hi - lo) * (f.y1 - f.y0);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="One year of the share price against your strike and breakeven">`;
+  if (Y(a.breakeven) < f.y1) s += `<rect x="${f.x0}" y="${Y(a.breakeven).toFixed(1)}" width="${f.x1 - f.x0}" height="${(f.y1 - Y(a.breakeven)).toFixed(1)}" fill="var(--loss-fill)"/>`;
+  s += `<path d="M${c.map((p, i) => X(i).toFixed(1) + "," + Y(p).toFixed(1)).join(" L")}" fill="none" stroke="var(--ink)" stroke-width="1.6"/>`;
+  // strike and breakeven sit within a few percent of each other — stack the
+  // labels (strike above its line, B/E below its line) so they never collide
+  const hl = (p, col, dy) => `<line x1="${f.x0}" y1="${Y(p).toFixed(1)}" x2="${f.x1}" y2="${Y(p).toFixed(1)}" stroke="${col}" stroke-width="1" stroke-dasharray="4 3"/>`;
+  s += hl(a.K, "var(--clay)");
+  s += hl(a.breakeven, "var(--ink-2)");
+  s += txt(f.x1, Y(a.K) - 4, "strike " + strk(a.K), { a: "end", c: "var(--clay)", w: 600, z: 9 });
+  s += txt(f.x1, Y(a.breakeven) + 11, "breakeven " + money(a.breakeven, 2), { a: "end", c: "var(--ink-2)", w: 600, z: 9 });
+  s += `<circle cx="${X(c.length - 1).toFixed(1)}" cy="${Y(c[c.length - 1]).toFixed(1)}" r="3" fill="var(--clay)"/>`;
+  [lo, hi].forEach((p) => s += txt(f.x0 - 6, Y(p) + 3, money(p, 0), { a: "end" }));
+  s += txt(f.x0, f.y1 + 14, "1y ago", {});
+  s += txt(f.x1, f.y1 + 14, "today", { a: "end" });
+  return s + "</svg>";
+}
+
+function ringSVG(score) {
+  const col = score >= 66 ? "var(--gain)" : score >= 45 ? "var(--clay)" : "var(--loss)";
+  const circ = 2 * Math.PI * 30;
+  const off = circ * (1 - score / 100);
+  return `<svg class="ring" viewBox="0 0 80 80" role="img" aria-label="Trade score ${score} out of 100">
+    <circle cx="40" cy="40" r="30" fill="none" stroke="var(--line-2)" stroke-width="7"/>
+    <circle cx="40" cy="40" r="30" fill="none" stroke="${col}" stroke-width="7" stroke-linecap="round"
+      stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 40 40)"/>
+    <text class="big" x="40" y="42" text-anchor="middle">${score}</text>
+    <text class="sm" x="40" y="54" text-anchor="middle">/ 100</text>
+  </svg>`;
+}
+</script>
+
+<script>
+/* ============================================================
+   7. RENDERING
+   ============================================================ */
+"use strict";
+
+function kvRow(k, v, c) { return `<tr><td>${k}</td><td class="mono ${c || ""}">${v}</td></tr>`; }
+
+function renderResult(a, ctx, scan, mc, wheel, ccalls) {
+  const [tag, blurb] = verdictText(a.score, a, ctx);
+  const { pro, con } = buildNarrative(a, ctx);
+  const sug = suggestions(a, scan, ctx);
+  const chosenRow = scan.find((r) => r.strike === a.K);
+
+  const scanRows = (() => {
+    const top = scan.slice(0, 10);
+    if (chosenRow && !top.includes(chosenRow)) top.push(chosenRow);
+    return top.map((r) => `<tr class="${r.strike === a.K ? "chosen" : ""} ${r === scan[0] ? "best" : ""}">
+      <td>${strk(r.strike)}${r.itm ? " ·itm" : ""}</td>
+      <td>${money(r.credit, 2)}</td>
+      <td>${num(Math.abs(r.delta), 2)}</td>
+      <td>${pct(r.annual, 0)}</td>
+      <td>${pct(r.cushion, 1)}</td>
+      <td>${pct(r.pKeep, 0)}</td>
+      <td>${pct(r.spreadPct, 0)}</td>
+      <td>${(r.oi || 0).toLocaleString()}</td>
+      <td><b>${r.score}</b></td></tr>`).join("");
+  })();
+
+  const ccRows = ccalls.slice(0, 6).map((r) => `<tr>
+      <td>${strk(r.strike)}</td><td>${money(r.credit, 2)}</td><td>${num(Math.abs(r.delta), 2)}</td>
+      <td>${pct(r.annual, 0)}</td><td>${pct(r.ifCalledReturn, 1)}</td><td>${money(r.ifCalled, 0)}</td>
+      <td>${pct(r.pCalled, 0)}</td><td>${(r.oi || 0).toLocaleString()}</td></tr>`).join("");
+
+  const eFlag = ctx.earningsBeforeExpiry
+    ? `<div class="flag warn"><span class="ic">!</span><div><b>Earnings before expiry.</b> ${ctx.earnings.when ? fmtDate(ctx.earnings.when) : "Date not confirmed"}${ctx.earnings.source === "window" ? " (estimated window)" : ""}. Implied vol is usually elevated going in and drops sharply after — and the stock can gap through your strike.</div></div>`
+    : ctx.earnings.when
+      ? `<div class="flag ok"><span class="ic">✓</span><div>Next earnings ${fmtDate(ctx.earnings.when)} — after this expiry.</div></div>`
+      : "";
+
+  const ivPctile = ctx.ivPctile != null
+    ? `Implied vol ${pct(a.iv, 0)} sits ${ctx.ivPctile >= 0.97 ? "at the top of" : "above " + pct(ctx.ivPctile, 0) + " of"} this stock's own 1-month realised-volatility readings over the past year${ctx.hv30 ? ` (realised right now: ${pct(ctx.hv30, 0)})` : ""} — a rough stand-in for IV rank.`
+    : `Implied vol ${pct(a.iv, 0)}${ctx.hv30 ? `, versus ${pct(ctx.hv30, 0)} realised over the last month` : ""}.`;
+
+  return `
+  <div class="sec">
+    <div class="card">
+      <div class="verdict">
+        ${ringSVG(a.score)}
+        <div class="verdict-body">
+          <div class="tag">${esc(ctx.symbol)} · ${strk(a.K)} put · ${fmtDate(ctx.expiryDate)} · ${ctx.dte}d</div>
+          <h2>${esc(tag)}</h2>
+          <p>${esc(blurb)}</p>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div><span>Premium collected</span><b class="pos">${money(a.premium$)}</b></div>
+        <div><span>Annualised return</span><b>${pct(a.annual, 1)}</b></div>
+        <div><span>Keep full premium</span><b>${pct(a.pKeep, 0)}</b></div>
+        <div><span>Breakeven</span><b>${money(a.breakeven, 2)}</b></div>
+        <div><span>Downside cushion</span><b>${pct(a.cushion, 1)}</b></div>
+        <div><span>Expected P&amp;L</span><b class="${cls(a.evPnl)}">${money(a.evPnl)}</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Why it's good — and what to watch</h2></div>
+    <div class="pcs">
+      <div class="col pro"><h3>In its favour</h3><ul>${pro.map((x) => `<li>${x}</li>`).join("")}</ul></div>
+      <div class="col con"><h3>Against it</h3><ul>${con.map((x) => `<li>${x}</li>`).join("")}</ul></div>
+    </div>
+    ${eFlag}
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">02</span><h2>The trade in detail</h2></div>
+    <div class="scroller"><table class="kv"><tbody>
+      ${kvRow("Underlying price", money(ctx.S, 2))}
+      ${kvRow("Strike", money(a.K, 2))}
+      ${kvRow("Bid / mid / ask", `${money(a.put.bid, 2)} / ${money(a.mid, 2)} / ${money(a.put.ask, 2)}`)}
+      ${kvRow("Credit assumed (bid)", money(a.credit, 2))}
+      ${kvRow("Contracts", String(ctx.contracts))}
+      ${kvRow("Collateral held", money(a.collateral))}
+      ${kvRow("Premium", money(a.premium$), "pos")}
+      ${kvRow("Days to expiry", `${ctx.dte} (T = ${num(ctx.T, 3)}y)`)}
+      ${kvRow("Static return", pct(a.staticReturn, 2))}
+      ${kvRow("Annualised", pct(a.annual, 1))}
+      ${kvRow("Breakeven", money(a.breakeven, 2))}
+      ${kvRow("Downside cushion", pct(a.cushion, 1))}
+      ${kvRow("Implied vol (this strike)", pct(a.iv, 1))}
+      ${kvRow("Delta", num(a.greeks.delta, 3))}
+      ${kvRow("Theta / day", money(a.greeks.theta * a.perContract, 2), "pos")}
+      ${kvRow("P(assignment)", pct(a.pAssign, 0))}
+      ${kvRow("If assigned, basis", money(a.breakeven, 2))}
+      ${kvRow("If assigned, discount to spot", pct(a.discountIfAssigned, 1))}
+      ${kvRow("Max profit", money(a.maxProfit), "pos")}
+      ${kvRow("Max loss (stock → 0)", money(-a.maxLoss), "neg")}
+    </tbody></table></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Potential outcomes</h2><span class="note">${mc.pnl.length.toLocaleString()} Monte-Carlo paths</span></div>
+    <div class="stat-grid">
+      <div><span>Chance of profit</span><b class="pos">${pct(mc.pProfit, 0)}</b></div>
+      <div><span>Chance of assignment</span><b>${pct(mc.pAssigned, 0)}</b></div>
+      <div><span>Expected P&amp;L</span><b class="${cls(a.evPnl)}">${money(a.evPnl)}</b></div>
+      <div><span>Median P&amp;L</span><b class="${cls(mc.p50)}">${money(mc.p50)}</b></div>
+      <div><span>5th percentile</span><b class="neg">${money(mc.p05)}</b></div>
+      <div><span>Worst of ${mc.pnl.length.toLocaleString()}</span><b class="neg">${money(mc.worst)}</b></div>
+    </div>
+    <div class="fig" style="margin-top:14px">${mcHistogram(mc, a.evPnl)}
+      <div class="figcap">Each bar is a slice of the ${mc.pnl.length.toLocaleString()} simulated expiry outcomes. Most land on the premium (the labelled spike); the long left tail is the assignment risk — capped gain on the right, open-ended loss on the left, which is why the <b>mean sits well below the median</b>.</div>
+    </div>
+    <div class="scroller" style="margin-top:14px"><table><thead><tr>
+      <th>Scenario</th><th>Stock at expiry</th><th>Probability</th><th>Your P&amp;L</th></tr></thead><tbody>
+      <tr><td>Stock flat or up</td><td>≥ ${money(a.K, 2)}</td><td>${pct(a.pKeep, 0)}</td><td class="mono pos">${money(a.premium$)}</td></tr>
+      <tr><td>Dips, stays above breakeven</td><td>${money(a.breakeven, 2)}–${money(a.K, 2)}</td><td>${pct(Math.max(0, a.pAssign - probBelow(ctx.S, a.breakeven, ctx.T, a.iv, a.g - 0.5 * a.iv * a.iv)), 0)}</td><td class="mono pos">${money(a.premium$)} → ${money(0)}</td></tr>
+      <tr><td>Assigned below breakeven</td><td>&lt; ${money(a.breakeven, 2)}</td><td>${pct(probBelow(ctx.S, a.breakeven, ctx.T, a.iv, a.g - 0.5 * a.iv * a.iv), 0)}</td><td class="mono neg">loss grows</td></tr>
+    </tbody></table></div>
+    <div class="fig" style="margin-top:14px">
+      <div class="figcap" style="border:0;margin:0;padding:0 0 10px"><b>If you wheeled ${esc(ctx.symbol)} like this for a year</b> — same delta target each cycle, implied vol held at today's level, no fees, return on the ${money(a.collateral)} of collateral.</div>
+      <div class="stat-grid">
+        <div><span>Median annual return</span><b class="${cls(wheel.p50)}">${pctSigned(wheel.p50, 1)}</b></div>
+        <div><span>Mean</span><b class="${cls(wheel.mean)}">${pctSigned(wheel.mean, 1)}</b></div>
+        <div><span>Rough 90% range</span><b>${pctSigned(wheel.p05, 0)} … ${pctSigned(wheel.p95, 0)}</b></div>
+        <div><span>Chance of a losing year</span><b class="${wheel.pLoss > 0.25 ? "neg" : ""}">${pct(wheel.pLoss, 0)}</b></div>
+      </div>
+      <p class="hint" style="margin-top:10px">${ctx.driftAdj === 0
+        ? "At the default 0% drift the stock is modelled to grow at roughly the risk-free rate — the option market's own neutral view, under which no options strategy beats T-bills on average. Equities have historically drifted up faster; raise the drift in Assumptions to see the wheel on a more bullish path."
+        : `At the ${pctSigned(ctx.driftAdj, 0)} drift you set, the stock is assumed to appreciate that much faster than the neutral case each year.`}</p>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Payoff &amp; probability</h2></div>
+    <div class="two">
+      <div class="fig">${payoffChart(a, ctx)}<div class="figcap">Profit is capped at the premium. Below the strike you own the shares and the line tracks them down.</div></div>
+      <div class="fig">${distributionChart(a, ctx)}<div class="figcap">The bell is where the market's implied volatility says the stock could be at expiry. More area to the right of the strike is a safer sale.</div></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Better options</h2><span class="note">every put strike at this expiry, scored</span></div>
+    <ul class="pcs" style="display:block;list-style:none;padding:0;margin:0 0 14px">
+      ${sug.map((x) => `<li style="padding:10px 0;border-bottom:1px solid var(--line);font-size:14px;color:var(--ink-2)">${x}</li>`).join("")}
+    </ul>
+    <div class="fig">${scanChart(scan, a.K, ctx)}<div class="figcap">Up and to a point is better — more annualised return. Too far right (high delta) and you're just buying the stock.</div></div>
+    <div class="scroller" style="margin-top:14px"><table><thead><tr>
+      <th>Strike</th><th>Credit</th><th>Δ</th><th>Ann.</th><th>Cushion</th><th>Keep</th><th>Spread</th><th>OI</th><th>Score</th>
+    </tr></thead><tbody>${scanRows}</tbody></table></div>
+    <div style="margin-top:14px"><button class="btn ghost sm" id="cmpExp">Compare nearby expiries</button></div>
+    <div id="cmpExpOut" style="margin-top:14px"></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">06</span><h2>The covered-call leg</h2><span class="note">assigned at ${strk(a.K)}, effective basis ${money(a.breakeven, 2)} — calls to sell against the shares</span></div>
+    <div class="scroller"><table><thead><tr>
+      <th>Call strike</th><th>Credit</th><th>Δ</th><th>Ann. yield</th><th>Return if called</th><th>$ if called</th><th>Keep shares</th><th>OI</th>
+    </tr></thead><tbody>${ccRows || `<tr><td colspan="8">No liquid calls above the basis for this expiry.</td></tr>`}</tbody></table></div>
+    <p class="hint">"Return if called" counts the call premium plus the move from your ${money(a.breakeven, 2)} basis to the call strike. Chaining a put cycle into a call cycle is the whole wheel.</p>
+  </div>
+
+  <div class="sec">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Context</h2></div>
+    <div class="fig">${priceChart(ctx.hist, a, ctx)}<div class="figcap">${ctx.low52 ? `52-week range ${money(ctx.low52, 2)}–${money(ctx.high52, 2)}. ` : ""}The shaded band is where this trade is underwater.</div></div>
+    <p class="hint" style="margin-top:12px">${ivPctile}</p>
+    <div class="chips">
+      <span class="chip">spread ${pct(a.spreadPct, 1)}</span>
+      <span class="chip">OI ${(a.put.oi || 0).toLocaleString()}</span>
+      <span class="chip">vol ${(a.put.volume || 0).toLocaleString()}</span>
+      ${ctx.summary.beta != null ? `<span class="chip">β ${num(ctx.summary.beta, 2)}</span>` : ""}
+      ${ctx.summary.divYield ? `<span class="chip">div ${pct(ctx.summary.divYield, 2)}</span>` : ""}
+      ${ctx.summary.marketCap ? `<span class="chip">mcap ${money(ctx.summary.marketCap / 1e9, 1)}B</span>` : ""}
+      ${ctx.summary.sector ? `<span class="chip">${esc(ctx.summary.sector)}</span>` : ""}
+      <span class="chip">r ${pct(ctx.r, 2)}</span>
+      <span class="chip">drift ${pctSigned(ctx.driftAdj, 0)}</span>
+    </div>
+  </div>`;
+}
+</script>
+
+<script>
+/* ============================================================
+   8. APP
+   ============================================================ */
+"use strict";
+
+const el = {
+  form: $("#form"), ticker: $("#ticker"), expiry: $("#expiry"), strike: $("#strike"),
+  go: $("#go"), result: $("#result"), error: $("#error"), errTitle: $("#errTitle"), errBody: $("#errBody"),
+  setup: $("#setup"), stamp: $("#stamp"), proxyDot: $("#proxyDot"), proxyState: $("#proxyState"),
+  contracts: $("#contracts"), drift: $("#drift"), rate: $("#rate"), targetDelta: $("#targetDelta"),
+  settings: $("#settings"), workerUrl: $("#workerUrl"), testBtn: $("#testBtn"), testResult: $("#testResult"),
+  saveSettings: $("#saveSettings"), cancelSettings: $("#cancelSettings"), settingsBtn: $("#settingsBtn"),
+};
+
+let STATE = { symbol: null, expiries: [], chain: null, ctx: null };
+
+function showError(msg, title) {
+  el.error.hidden = false;
+  el.errTitle.textContent = title || "Couldn't finish that";
+  el.errBody.textContent = msg;
+  el.result.hidden = true;
+  el.error.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+function clearError() { el.error.hidden = true; }
+
+function busy(on, label) {
+  el.go.disabled = on;
+  el.go.innerHTML = on ? `<span class="spinner"></span>${label || "Working…"}` : "Analyze";
+}
+
+function refreshProxyDot() {
+  const has = !!API.base();
+  el.proxyDot.className = "status-dot " + (has ? "ok" : "bad");
+  el.setup.hidden = has;
+}
+
+/* ---------- data flow ---------- */
+
+async function loadTicker(sym) {
+  sym = sym.trim().toUpperCase();
+  if (!sym) return;
+  clearError();
+  busy(true, "Loading chain…");
+  try {
+    const info = await loadExpiries(sym);
+    if (!info.expiries.length) throw new AppError(`"${sym}" has no listed option expiries.`);
+    STATE.symbol = info.symbol;
+    STATE.info = info;
+    STATE.expiries = info.expiries;
+    LS.set("ticker", info.symbol);
+
+    // default to the expiry nearest 35 DTE
+    let best = 0, bd = 1e9;
+    info.expiries.forEach((e, i) => { const d = Math.abs(e.dte - 35); if (d < bd) { bd = d; best = i; } });
+    el.expiry.innerHTML = info.expiries.map((e, i) => `<option value="${i}">${e.label}  ·  ${e.dte}d</option>`).join("");
+    el.expiry.disabled = false;
+    el.expiry.value = String(best);
+    await loadExpiry();
+  } catch (e) {
+    handle(e);
+  } finally {
+    busy(false);
+  }
+}
+
+async function loadExpiry() {
+  const idx = Number(el.expiry.value);
+  const exp = STATE.expiries[idx];
+  if (!exp) return;
+  clearError();
+  busy(true, "Pulling data…");
+  try {
+    const sym = STATE.symbol;
+    const [chain, hist, summary, liveRate] = await Promise.all([
+      loadChain(sym, exp.epoch), loadHistory(sym), loadSummary(sym), loadRate(),
+    ]);
+    const S = chain.spot || STATE.info.spot;
+    if (!(S > 0)) throw new AppError("No usable underlying price came back. Try again in a moment.");
+
+    const now = Date.now();
+    const dte = Math.max(0, Math.round((chain.expiry - now) / DAY));
+    const T = Math.max(dte, 0.5) / 365;
+    const rInput = parseFloat(el.rate.value);
+    const r = isFinite(rInput) && rInput >= 0 ? rInput / 100 : liveRate;
+    if (!isFinite(rInput)) el.rate.placeholder = (liveRate * 100).toFixed(2);
+    const q = summary.divYield || 0;
+    const driftAdj = (parseFloat(el.drift.value) || 0) / 100;
+    const contracts = clamp(parseInt(el.contracts.value) || 1, 1, 500);
+    const targetDelta = clamp(parseFloat(el.targetDelta.value) || 0.3, 0.05, 0.5);
+
+    const hv30 = realisedVol(hist.closes, 21);
+    const eWhen = summary.earnings.when;
+    const earningsBeforeExpiry = !!(eWhen && eWhen > now - DAY && eWhen <= chain.expiry);
+
+    const ctx = {
+      symbol: sym, name: STATE.info.name, S, T, dte, r, q, driftAdj, contracts, targetDelta,
+      puts: chain.puts, calls: chain.calls, expiryDate: chain.expiry,
+      hist, summary, hv30,
+      hvAnnual: realisedVol(hist.closes, null),
+      low52: hist.low52, high52: hist.high52,
+      earnings: summary.earnings, earningsBeforeExpiry,
+      ivPctile: null,
+    };
+
+    // pick the strike closest to the target delta
+    let pick = null, pd = 1e9;
+    for (const p of ctx.puts) {
+      if (!(p.strike > 0) || p.strike > S * 1.1) continue;
+      const mid = p.bid > 0 && p.ask > 0 ? (p.bid + p.ask) / 2 : p.last;
+      let iv = impliedVol("put", mid, S, p.strike, T, r, q);
+      if (!(iv > 0.02 && iv < 4)) iv = p.iv > 0.02 ? p.iv : (hv30 || 0.3);
+      const d = Math.abs(bs("put", S, p.strike, T, r, q, iv).delta);
+      if (Math.abs(d - targetDelta) < pd) { pd = Math.abs(d - targetDelta); pick = p.strike; }
+    }
+    const atmIv = (() => {
+      let bestP = ctx.puts[0], bg = 1e9;
+      for (const p of ctx.puts) { const g = Math.abs(p.strike - S); if (g < bg) { bg = g; bestP = p; } }
+      const mid = bestP.bid > 0 && bestP.ask > 0 ? (bestP.bid + bestP.ask) / 2 : bestP.last;
+      return impliedVol("put", mid, S, bestP.strike, T, r, q) || bestP.iv || hv30;
+    })();
+    ctx.ivPctile = ivVsRealisedPercentile(hist.closes, atmIv);
+
+    STATE.ctx = ctx;
+    STATE.chain = chain;
+
+    const strikes = ctx.puts.filter((p) => p.strike > 0 && p.strike <= S * 1.15 && (p.bid > 0 || p.last > 0))
+      .map((p) => p.strike).sort((x, y) => y - x);
+    el.strike.innerHTML = strikes.map((k) => `<option value="${k}">${strk(k)}${k >= S ? "  ·itm" : ""}</option>`).join("");
+    el.strike.disabled = false;
+    el.strike.value = String(pick ?? strikes[0]);
+
+    runAnalysis();
+  } catch (e) {
+    handle(e);
+  } finally {
+    busy(false);
+  }
+}
+
+function runAnalysis() {
+  const ctx = STATE.ctx;
+  if (!ctx) return;
+  clearError();
+  try {
+    const K = parseFloat(el.strike.value);
+    const a = analyseCSP(ctx, K);
+    const scan = scanPutStrikes(ctx);
+    // keep the headline score identical to this strike's row in the scan table
+    const chosenRow = scan.find((r) => r.strike === K);
+    a.score = chosenRow ? chosenRow.score : scoreTrade(
+      { strike: K, credit: a.credit, mid: a.mid, iv: a.iv, delta: a.greeks.delta, annual: a.annual,
+        breakeven: a.breakeven, cushion: a.cushion, pKeep: a.pKeep, oi: a.put.oi, spreadPct: a.spreadPct },
+      ctx);
+
+    const g = ctx.r - ctx.q + ctx.driftAdj;
+    const mc = simulateCSP({
+      S: ctx.S, K, T: ctx.T, sigma: a.iv, r: ctx.r, q: ctx.q, g,
+      premium: a.credit, contracts: ctx.contracts, nPaths: CONFIG.mcPaths,
+    });
+    const wheel = simulateWheelYear({
+      S: ctx.S, K, sigma: a.iv, r: ctx.r, q: ctx.q, g, dte: ctx.dte,
+      contracts: ctx.contracts, targetDelta: ctx.targetDelta, nPaths: CONFIG.mcPaths,
+    });
+    const ccalls = analyseCoveredCall(ctx, a.breakeven);
+
+    el.result.hidden = false;
+    el.result.innerHTML = renderResult(a, ctx, scan, mc, wheel, ccalls);
+    $("#cmpExp")?.addEventListener("click", compareExpiries);
+
+    const t = new Date();
+    el.stamp.textContent = `Data fetched ${t.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} · typically ~15 min delayed · ${ctx.symbol} ${money(ctx.S, 2)} · r ${pct(ctx.r, 2)}${ctx.q ? ` · div yield ${pct(ctx.q, 2)}` : ""}`;
+  } catch (e) {
+    handle(e);
+  }
+}
+
+async function compareExpiries() {
+  const ctx = STATE.ctx;
+  const btn = $("#cmpExp"), out = $("#cmpExpOut");
+  if (!ctx) return;
+  btn.disabled = true; btn.textContent = "Loading…";
+  try {
+    const here = STATE.expiries.findIndex((e) => Math.abs(e.epoch * 1000 - ctx.expiryDate) < DAY);
+    const idxs = [];
+    for (let d = -2; d <= 3; d++) { const i = here + d; if (i >= 0 && i < STATE.expiries.length) idxs.push(i); }
+    const rows = [];
+    for (const i of idxs) {
+      const e = STATE.expiries[i];
+      let chain;
+      try { chain = i === here ? STATE.chain : await loadChain(ctx.symbol, e.epoch); }
+      catch { continue; }
+      const dte = Math.max(0, Math.round((chain.expiry - Date.now()) / DAY));
+      const sub = { ...ctx, puts: chain.puts, dte, T: Math.max(dte, 0.5) / 365, expiryDate: chain.expiry, earningsBeforeExpiry: !!(ctx.earnings.when && ctx.earnings.when <= chain.expiry && ctx.earnings.when > Date.now() - DAY) };
+      const scan = scanPutStrikes(sub);
+      const best = scan[0];
+      if (best) rows.push({ label: e.label, dte, best, earn: sub.earningsBeforeExpiry });
+    }
+    rows.sort((x, y) => y.best.annual - x.best.annual);
+    out.innerHTML = `<div class="scroller"><table><thead><tr>
+      <th>Expiry</th><th>DTE</th><th>Best strike</th><th>Δ</th><th>Credit</th><th>Ann.</th><th>Score</th><th></th>
+    </tr></thead><tbody>${rows.map((r, i) => `<tr class="${i === 0 ? "best" : ""}">
+      <td>${r.label}</td><td>${r.dte}</td><td>${strk(r.best.strike)}</td><td>${num(Math.abs(r.best.delta), 2)}</td>
+      <td>${money(r.best.credit, 2)}</td><td>${pct(r.best.annual, 0)}</td><td><b>${r.best.score}</b></td>
+      <td>${r.earn ? "⚠ earnings" : ""}</td></tr>`).join("")}</tbody></table></div>
+      <p class="hint">Best-scoring put strike at each expiry near the one you picked. Higher up = more annualised return for a comparable-quality strike.</p>`;
+    btn.textContent = "Compared";
+  } catch (e) {
+    out.innerHTML = `<p class="hint neg">Couldn't compare: ${esc(e.message || e)}</p>`;
+    btn.disabled = false; btn.textContent = "Compare nearby expiries";
+  }
+}
+
+function handle(e) {
+  if (e instanceof AppError && e.message === "NO_PROXY") {
+    showError("No data proxy is set. Open Settings (top right) and paste your Cloudflare Worker URL — see the setup card above.", "Connect a data proxy first");
+    el.setup.hidden = false;
+    return;
+  }
+  showError(e instanceof AppError ? e.message : `Unexpected: ${e.message || e}`);
+  if (!(e instanceof AppError)) console.error(e);
+}
+
+/* ---------- settings ---------- */
+
+el.settingsBtn.addEventListener("click", () => {
+  el.workerUrl.value = LS.get("worker", "") || CONFIG.workerBase || "";
+  el.testResult.textContent = "";
+  el.settings.showModal();
+});
+el.cancelSettings.addEventListener("click", () => el.settings.close());
+el.saveSettings.addEventListener("click", () => {
+  const v = el.workerUrl.value.trim().replace(/\/+$/, "");
+  LS.set("worker", v);
+  el.settings.close();
+  refreshProxyDot();
+  if (STATE.symbol) loadTicker(STATE.symbol);
+});
+el.testBtn.addEventListener("click", async () => {
+  const v = el.workerUrl.value.trim().replace(/\/+$/, "");
+  if (!v) { el.testResult.textContent = "Paste a URL first."; return; }
+  el.testResult.textContent = "Testing…";
+  try {
+    const r = await fetch(v + "/health");
+    const j = await r.json();
+    el.testResult.innerHTML = j.ok
+      ? `<span class="pos">✓ Reachable.</span> Crumb: ${esc(j.crumb)}. ${esc(j.note || "")}`
+      : `<span class="neg">Reached it, but it reported a problem.</span>`;
+  } catch {
+    el.testResult.innerHTML = `<span class="neg">✗ Couldn't reach that URL.</span> Check it's deployed and copied exactly.`;
+  }
+});
+
+/* ---------- wiring ---------- */
+
+el.form.addEventListener("submit", (e) => { e.preventDefault(); loadTicker(el.ticker.value); });
+el.ticker.addEventListener("change", () => { if (el.ticker.value.trim()) loadTicker(el.ticker.value); });
+el.expiry.addEventListener("change", loadExpiry);
+el.strike.addEventListener("change", runAnalysis);
+[el.contracts, el.drift, el.rate, el.targetDelta].forEach((i) =>
+  i.addEventListener("change", () => { if (STATE.ctx) loadExpiry(); }));
+
+// restore last ticker
+const last = LS.get("ticker", "");
+if (last) el.ticker.value = last;
+refreshProxyDot();
+if (!API.base()) el.setup.hidden = false;
+</script>
+
