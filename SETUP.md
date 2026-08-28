@@ -9,10 +9,9 @@ Two pieces:
    Worker sits in the middle, does the awkward parts (the cookie/crumb
    handshake), and caches the answers so Yahoo is barely troubled.
 
-> **The Worker is already deployed** to your Cloudflare account
-> (`hello@lillyreid.com`) as `wheel-analyzer-proxy`, and its URL is baked into
-> `index.html` at `CONFIG.workerBase`. So Part 1 below is done — you only need
-> Part 2 to get the page online. Part 1 is kept as a record and for
+> **The Worker is already deployed** as `wheel-analyzer-proxy`, and its URL is
+> baked into `index.html` at `CONFIG.workerBase`. Part 1 below is done — you
+> only need Part 2 to get the page online. Part 1 is kept as a record and for
 > redeploying after you change `worker/worker.js`.
 
 To redeploy the Worker after an edit:
@@ -21,8 +20,8 @@ To redeploy the Worker after an edit:
 cd worker && npx wrangler deploy
 ```
 
-Health check any time: open `https://wheel-analyzer-proxy.wheel-analyzer-proxy.workers.dev/health`
-— you want `"crumb": "acquired"`.
+Health check any time: open your Worker's URL with `/health` on the end — you
+want `"crumb": "acquired"`.
 
 ---
 
@@ -94,68 +93,42 @@ Done — go to Part 2.
 
 ## Part 2 — The page (GitHub Pages)
 
-This is the part you have done before, with `options-from-zero`. If you are
-comfortable there, the short version is: publish this repo, turn on Pages for
-the `main` branch, root folder. The longer version follows.
-
-**Step 1 — Add the project to GitHub Desktop.**
-
-Paste into Terminal:
+The repo `lillystonks/wheel-analyzer` already exists and the code is pushed. Two
+things remain: make it public (GitHub Pages needs a public repo on the free
+plan, which is why `options-from-zero` is public too), and switch Pages on.
 
 ```bash
-open -a "GitHub Desktop" /Users/lillyreid/dev/wheel-analyzer
+gh repo edit lillystonks/wheel-analyzer --visibility public --accept-visibility-change-consequences
+gh api -X POST repos/lillystonks/wheel-analyzer/pages -f "source[branch]=main" -f "source[path]=/"
 ```
 
-GitHub Desktop opens with the repository already added.
+Give it a minute, then check the build:
 
-> If it says the folder is not a repository, it has not been initialised yet.
-> `cd /Users/lillyreid/dev/wheel-analyzer && git init`, then try again.
-
-**Step 2 — Check what is about to be uploaded.**
-
-The left column lists the files for the first commit. You should see roughly:
-`index.html`, `README.md`, `SETUP.md`, `.gitignore`, `.nojekyll`, and the
-`worker` folder. You should **not** see `node_modules` or anything under
-`.wrangler`.
-
-Nothing here is secret — there is no notification code and no API key. The
-Worker address is not sensitive either; the Worker only talks to Yahoo.
-
-**Step 3 — Publish.**
-
-1. Bottom left, **Summary** box: `Wheel analyzer`.
-2. **Commit to main.**
-3. Top of the window: **Publish repository.**
-4. The name should be `wheel-analyzer` to match the live URL in the README.
-   Private or public is up to you — Pages works either way on a personal
-   account.
-5. **Publish repository.**
-
-**Step 4 — Turn on Pages.**
-
-1. GitHub Desktop: **Repository → View on GitHub.**
-2. **Settings** tab (along the top of the repository).
-3. Left sidebar: **Pages.**
-4. Under **Build and deployment**, set **Source** to **Deploy from a branch**.
-5. **Branch**: `main`, folder `/ (root)`. **Save.**
-
-Wait a minute or two, refresh, and the top of the Pages panel shows the live
-address:
-
-```
-https://lillystonks.github.io/wheel-analyzer/
+```bash
+gh api repos/lillystonks/wheel-analyzer/pages --jq '.status + "  " + .html_url'
 ```
 
-**Step 5 — Connect the two.**
+`built` means it is live at **https://lillystonks.github.io/wheel-analyzer/**.
+The Worker URL is already in `index.html`, so it works with no further setup —
+on your phone too.
 
-Open that address. Click **Settings** (top right of the page). Paste the
-Worker's `.workers.dev` URL. **Test** — it should say *Reachable*. **Save.**
+### Or in the browser, no terminal
 
-Type a ticker and an expiry. That is it.
+1. <https://github.com/lillystonks/wheel-analyzer/settings> → scroll to
+   **Danger Zone** → **Change visibility** → **Public**.
+2. Same page, left sidebar **Pages** → **Source: Deploy from a branch** →
+   **Branch: `main` / `/ (root)`** → **Save**.
+3. Wait a minute; the live URL appears at the top of that Pages panel.
 
-> The Worker URL is stored only in your browser. Open the site on your phone and
-> you will paste it once there too. To ship the site pre-wired, put the URL in
-> `CONFIG.workerBase` near the top of `index.html` before you commit.
+### Lock the Worker to the site (optional, after Pages is up)
+
+```bash
+cd worker && npx wrangler deploy --var ALLOW_ORIGIN:https://lillystonks.github.io
+```
+
+After this only your page can call the Worker from a browser. Skip it and the
+Worker stays open — it only ever fetches public Yahoo data, and the free plan
+is 100,000 requests a day against a cache, so this is housekeeping, not urgent.
 
 ---
 
